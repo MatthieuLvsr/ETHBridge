@@ -10,7 +10,9 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications
 import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
 
-//solhint-disable interface-starts-with-i
+/// @title ETHBridge
+/// @notice A contract for bridging ETH using Chainlink CCIP.
+/// @dev Uses Chainlink's CCIP to facilitate cross-chain ETH transfers.
 interface CCIPRouter {
   function getWrappedNative() external view returns (address);
 }
@@ -18,34 +20,47 @@ interface CCIPRouter {
 contract ETHBridge is CCIPReceiver {
     using SafeERC20 for IERC20;
 
-    error InvalidTokenAmounts(uint256 gotAmounts);
-    error InvalidToken(address gotToken, address expectedToken);
-    error TokenAmountNotEqualToMsgValue(uint256 gotAmount, uint256 msgValue);
-
-    event EthSent(address indexed sender, address indexed receiver, uint256 amount, uint64 destinationChain);
-    event ExcessRefunded(address indexed refundReceiver, uint256 excessAmount);
-
+    /// @notice The wrapped native token (WETH) used for bridging.
     IWrappedNative public immutable i_weth;
-
+    
+    /// @notice The destination chain ID.
     uint64 private immutable DEST_CHAIN_ID;
 
+    /// @notice Emitted when ETH is sent across chains.
+    /// @param sender The address sending ETH.
+    /// @param receiver The address receiving ETH on the destination chain.
+    /// @param amount The amount of ETH sent.
+    /// @param destinationChain The destination chain ID.
+    event EthSent(address indexed sender, address indexed receiver, uint256 amount, uint64 destinationChain);
+    
+    /// @notice Emitted when excess ETH is refunded.
+    /// @param refundReceiver The address receiving the refund.
+    /// @param excessAmount The amount refunded.
+    event ExcessRefunded(address indexed refundReceiver, uint256 excessAmount);
+
+    /// @notice Error thrown when the received token amount is invalid.
+    error InvalidTokenAmounts(uint256 gotAmounts);
+    
+    /// @notice Error thrown when an unexpected token is received.
+    error InvalidToken(address gotToken, address expectedToken);
+    
+    /// @notice Error thrown when token amount does not match the message value.
+    error TokenAmountNotEqualToMsgValue(uint256 gotAmount, uint256 msgValue);
+
+    /// @param router The Chainlink CCIP router address.
+    /// @param _dest_chain The destination chain ID.
     constructor(address router, uint64 _dest_chain) CCIPReceiver(router) {
         i_weth = IWrappedNative(CCIPRouter(router).getWrappedNative());
         i_weth.approve(router, type(uint256).max);
         DEST_CHAIN_ID = _dest_chain;
     }
 
+    /// @notice Fallback function to accept ETH deposits.
     receive() external payable {}
 
-    function getFee(
-        address _receiver,
-        uint256 _amount
-    ) public view returns (uint256 fee) {
-        Client.EVM2AnyMessage memory message = _buildCCIPMessage(_receiver, _amount);
-
-        return IRouterClient(getRouter()).getFee(DEST_CHAIN_ID, message);
-    }
-
+    /// @notice Sends ETH to another chain using CCIP.
+    /// @param _receiver The recipient address on the destination chain.
+    /// @param _amount The amount of ETH to send.
     function send(address _receiver, uint256 _amount) external payable {
         require(_receiver != address(0), "Invalid receiver address");
         require(_amount > 0, "Amount must be greater than zero");
@@ -55,7 +70,6 @@ contract ETHBridge is CCIPReceiver {
         uint256 totalRequired = _amount + estimatedFee;
 
         require(msg.value >= totalRequired, "Insufficient ETH for transfer and fees");
-
 
         Client.EVM2AnyMessage memory message = _buildCCIPMessage(_receiver, _amount);
         _ccipSend(message, estimatedFee);
@@ -70,42 +84,20 @@ contract ETHBridge is CCIPReceiver {
         }
     }
 
-    function _buildCCIPMessage(
+    /// @notice Gets the estimated fee for sending ETH to another chain.
+    /// @param _receiver The recipient address on the destination chain.
+    /// @param _amount The amount of ETH to send.
+    /// @return fee The estimated fee in ETH.
+    function getFee(
         address _receiver,
         uint256 _amount
-    ) private view returns (Client.EVM2AnyMessage memory) {
-        Client.EVMTokenAmount[]
-            memory tokenAmounts = new Client.EVMTokenAmount[](1);
-        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
-            token: address(i_weth),
-            amount: _amount
-        });
-        tokenAmounts[0] = tokenAmount;
-        Client.EVM2AnyMessage memory evm2AnyMessage = Client.EVM2AnyMessage({
-            receiver: abi.encode(_receiver),
-            data: "",
-            tokenAmounts: tokenAmounts,
-            extraArgs: Client._argsToBytes(
-                Client.EVMExtraArgsV2({
-                    gasLimit: 400_000,
-                    allowOutOfOrderExecution: true
-                })
-            ),
-            feeToken: address(0)
-        });
-        return evm2AnyMessage;
+    ) public view returns (uint256 fee) {
+        Client.EVM2AnyMessage memory message = _buildCCIPMessage(_receiver, _amount);
+        return IRouterClient(getRouter()).getFee(DEST_CHAIN_ID, message);
     }
 
-    function _ccipSend(
-        Client.EVM2AnyMessage memory message,
-        uint256 fees
-    ) private returns (bytes32) {
-
-        i_weth.deposit{value: message.tokenAmounts[0].amount}();
-
-        return IRouterClient(getRouter()).ccipSend{value: fees}(DEST_CHAIN_ID, message);
-    }
-
+    /// @notice Handles received CCIP messages.
+    /// @param message The received message containing ETH transfer details.
     function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
         address receiver = abi.decode(message.data, (address));
 
@@ -125,5 +117,46 @@ contract ETHBridge is CCIPReceiver {
             i_weth.deposit{value: tokenAmount}();
             i_weth.transfer(receiver, tokenAmount);
         }
+    }
+
+    /// @notice Builds a CCIP message for cross-chain ETH transfer.
+    /// @param _receiver The recipient address on the destination chain.
+    /// @param _amount The amount of ETH to send.
+    /// @return The constructed CCIP message.
+    function _buildCCIPMessage(
+        address _receiver,
+        uint256 _amount
+    ) private view returns (Client.EVM2AnyMessage memory) {
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        Client.EVMTokenAmount memory tokenAmount = Client.EVMTokenAmount({
+            token: address(i_weth),
+            amount: _amount
+        });
+        tokenAmounts[0] = tokenAmount;
+
+        return Client.EVM2AnyMessage({
+            receiver: abi.encode(_receiver),
+            data: "",
+            tokenAmounts: tokenAmounts,
+            extraArgs: Client._argsToBytes(
+                Client.EVMExtraArgsV2({
+                    gasLimit: 400_000,
+                    allowOutOfOrderExecution: true
+                })
+            ),
+            feeToken: address(0)
+        });
+    }
+
+    /// @notice Sends a CCIP message for cross-chain ETH transfer.
+    /// @param message The CCIP message to send.
+    /// @param fees The transaction fees in ETH.
+    /// @return The transaction ID.
+    function _ccipSend(
+        Client.EVM2AnyMessage memory message,
+        uint256 fees
+    ) private returns (bytes32) {
+        i_weth.deposit{value: message.tokenAmounts[0].amount}();
+        return IRouterClient(getRouter()).ccipSend{value: fees}(DEST_CHAIN_ID, message);
     }
 }
