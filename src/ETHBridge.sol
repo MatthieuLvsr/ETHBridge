@@ -20,11 +20,19 @@ interface CCIPRouter {
 contract ETHBridge is CCIPReceiver {
     using SafeERC20 for IERC20;
 
+/*//////////////////////////////////////////////////////////////
+                        STATE VARIABLES
+//////////////////////////////////////////////////////////////*/
+
     /// @notice The wrapped native token (WETH) used for bridging.
     IWrappedNative public immutable i_weth;
     
     /// @notice The destination chain ID.
     uint64 private immutable DEST_CHAIN_ID;
+
+/*//////////////////////////////////////////////////////////////
+                           EVENTS
+//////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when ETH is sent across chains.
     /// @param sender The address sending ETH.
@@ -38,6 +46,10 @@ contract ETHBridge is CCIPReceiver {
     /// @param excessAmount The amount refunded.
     event ExcessRefunded(address indexed refundReceiver, uint256 excessAmount);
 
+/*//////////////////////////////////////////////////////////////
+                        CUSTOM ERRORS
+//////////////////////////////////////////////////////////////*/
+
     /// @notice Error thrown when the received token amount is invalid.
     error InvalidTokenAmounts(uint256 gotAmounts);
     
@@ -46,6 +58,10 @@ contract ETHBridge is CCIPReceiver {
     
     /// @notice Error thrown when token amount does not match the message value.
     error TokenAmountNotEqualToMsgValue(uint256 gotAmount, uint256 msgValue);
+
+/*//////////////////////////////////////////////////////////////
+                        CONSTRUCTOR
+//////////////////////////////////////////////////////////////*/
 
     /// @param router The Chainlink CCIP router address.
     /// @param _dest_chain The destination chain ID.
@@ -57,6 +73,10 @@ contract ETHBridge is CCIPReceiver {
 
     /// @notice Fallback function to accept ETH deposits.
     receive() external payable {}
+
+/*//////////////////////////////////////////////////////////////
+                    EXTERNAL FUNCTIONS
+//////////////////////////////////////////////////////////////*/
 
     /// @notice Sends ETH to another chain using CCIP.
     /// @param _receiver The recipient address on the destination chain.
@@ -84,6 +104,10 @@ contract ETHBridge is CCIPReceiver {
         }
     }
 
+/*//////////////////////////////////////////////////////////////
+                    PUBLIC FUNCTIONS
+//////////////////////////////////////////////////////////////*/
+
     /// @notice Gets the estimated fee for sending ETH to another chain.
     /// @param _receiver The recipient address on the destination chain.
     /// @param _amount The amount of ETH to send.
@@ -95,6 +119,10 @@ contract ETHBridge is CCIPReceiver {
         Client.EVM2AnyMessage memory message = _buildCCIPMessage(_receiver, _amount);
         return IRouterClient(getRouter()).getFee(DEST_CHAIN_ID, message);
     }
+
+/*//////////////////////////////////////////////////////////////
+                    INTERNAL FUNCTIONS
+//////////////////////////////////////////////////////////////*/
 
     /// @notice Handles received CCIP messages.
     /// @param message The received message containing ETH transfer details.
@@ -118,6 +146,10 @@ contract ETHBridge is CCIPReceiver {
             i_weth.transfer(receiver, tokenAmount);
         }
     }
+
+/*//////////////////////////////////////////////////////////////
+                    PRIVATE FUNCTIONS
+//////////////////////////////////////////////////////////////*/
 
     /// @notice Builds a CCIP message for cross-chain ETH transfer.
     /// @param _receiver The recipient address on the destination chain.

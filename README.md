@@ -1,66 +1,85 @@
-## Foundry
+# 🌉 ETHBridge
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## 🚀 Overview
+ETHBridge is a Solidity-based smart contract that enables cross-chain ETH transfers using Chainlink's Cross-Chain Interoperability Protocol (CCIP). This project provides a decentralized and secure mechanism for bridging ETH between different blockchain networks.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+## 📁 Project Structure
+```
+├── foundry.toml          # 🛠 Foundry configuration file
+├── lib                   # 📦 External dependencies
+│   ├── ccip              # 🔗 Chainlink CCIP contracts
+│   ├── chainlink-local   # 🔗 Local Chainlink implementation
+│   ├── forge-std         # 📚 Foundry standard library
+│   └── openzeppelin-contracts # 🔐 OpenZeppelin contracts
+├── LICENSE               # 📜 Project license
+├── mocks                 # 🎭 Mock contracts for testing
+│   ├── MockCCIPRouter.t.sol
+│   ├── MockCCIPSimulator.t.sol
+│   ├── MockETHBridge.t.sol
+│   └── MockWETH.t.sol
+├── README.md             # 📖 Project documentation
+├── remappings.txt        # 🔀 Dependency remappings
+├── script                # 📜 Deployment and scripting
+├── src                   # 📝 Source contracts
+│   └── ETHBridge.sol     # 🌉 ETHBridge contract
+└── test                  # 🧪 Testing suite
+    └── ETHBridge.t.sol   # ✅ ETHBridge contract tests
 ```
 
-### Test
+## ✨ Features
+- ✅ Uses Chainlink CCIP for cross-chain ETH transfers.
+- 🔄 Supports native ETH bridging with automatic wrapping/unwrapping.
+- ⚡ Implements secure and efficient transaction processing.
+- 💰 Refunds excess ETH to the sender if overpaid.
 
-```shell
-$ forge test
+## ⚙️ Installation
+Ensure you have [Foundry](https://book.getfoundry.sh/) installed, then clone the repository and install dependencies:
+```sh
+git clone <repository_url>
+cd eth-bridge
+forge install
 ```
 
-### Format
-
-```shell
-$ forge fmt
+## 🔨 Compilation
+Compile the smart contracts using Foundry:
+```sh
+forge build
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
+## 🧪 Testing
+Run the test suite:
+```sh
+forge test
 ```
 
-### Anvil
-
-```shell
-$ anvil
+## 🚀 Deployment
+To deploy the contract, modify the script and run:
+```sh
+forge script script/DeployETHBridge.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> --broadcast
 ```
 
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+## 🔄 Sending ETH Cross-Chain
+### 🌍 From Sepolia to BSC
+```sh
+forge script script/SendETHSepoliaToBSC.s.sol --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
 ```
 
-### Cast
-
-```shell
-$ cast <subcommand>
+### 🔗 From BSC to Sepolia
+```sh
+forge script script/SendETHBSCToSepolia.s.sol --rpc-url $BSC_RPC_URL --private-key $PRIVATE_KEY --broadcast
 ```
 
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+## 🛠 Environment Variables
+Create a `.env` file with the following format:
+```env
+PRIVATE_KEY=your_private_key_here
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID
+BSC_RPC_URL=https://bsc-dataseed.binance.org/
+ETH_BRIDGE_SEPOLIA=0x1234567890abcdef1234567890abcdef12345678
+ETH_BRIDGE_BSC=0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef
+RECEIVER_ADDRESS=0xrecipientaddresshere
 ```
+
+## 📜 License
+This project is licensed under the BUSL-1.1 License.
+
